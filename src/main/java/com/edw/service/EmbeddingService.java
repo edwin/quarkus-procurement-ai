@@ -38,7 +38,12 @@ public class EmbeddingService {
                     .from("budget", record.budget.toString())
                     .from("year", record.year);
 
-            TextSegment segment = TextSegment.from(record.title, metadata);
+            String comprehensiveText = String.format(
+                    "Judul Proyek: %s. Instansi: %s. Tahun: %s. Kategori: %s.",
+                    record.title, record.institution, record.year, record.category
+            );
+
+            TextSegment segment = TextSegment.from(comprehensiveText, metadata);
             store.add(record.getEmbeddingId().toString(), embeddingModel.embed(segment).content());
 
             record.embedded = true;

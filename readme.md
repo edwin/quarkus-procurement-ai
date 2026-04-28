@@ -105,12 +105,20 @@ Ask questions about procurement data:
 ```bash
 curl -X POST http://localhost:8080/procurement/chat \
   -H "Content-Type: application/json" \
-  -d "Berapa anggaran untuk pengadaan komputer tahun 2024?"
+  -d "saya adalah vendor catering di jakarta, apa saja instansi yang mengadakan proyek konsumsi di tahun 2026 yang nominalnya besar?"
 ```
 
 **Response:**
-```json
-"Berdasarkan data RUP yang tersedia, anggaran untuk pengadaan komputer tahun 2024 adalah..."
+```
+Sebagai vendor penyedia catering di Jakarta, ada beberapa instansi yang memiliki proyek dengan kategori Konsumsi & Catering dan budget yang besar pada tahun 2026, yaitu:
+
+1. Provinsi DKI Jakarta (Belanja Makanan dan Minuman Rapat)
+- Budget: Rp 84,500,000
+
+2. Provinsi DKI Jakarta (Belanja Makanan dan Minuman Aktivitas Lapangan Uji Kompetensi Pegawai)
+- Budget: Rp 309,710,000
+
+Jadi, sebagai vendor catering di Jakarta, Anda bisa fokus menargetkan pekerjaan kepada Instansi Provinsi DKI Jakarta untuk kedua proyek-proyek tersebut. 
 ```
 
 ### Data Ingestion Endpoint
@@ -150,7 +158,7 @@ curl -X POST http://localhost:8080/procurement/chat \
 ```bash
 curl -X POST http://localhost:8080/procurement/chat \
   -H "Content-Type: application/json" \
-  -d "Berapa total anggaran pengadaan IT di Kementerian Pendidikan?"
+  -d "Berapa total anggaran pengadaan Kendaraan di Polri?"
 ```
 
 ### 3. Ingest new data

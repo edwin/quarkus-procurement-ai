@@ -9,7 +9,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * <pre>
@@ -33,10 +35,14 @@ public class EmbeddingService {
         List<ProcurementRecord> records = ProcurementRecord.find("embedded = false").page(0, limit).list();
 
         for (ProcurementRecord record : records) {
-            Metadata metadata = Metadata.from("id_rup", record.idRup)
-                    .from("institution", record.institution)
-                    .from("budget", record.budget.toString())
-                    .from("year", record.year);
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("id_rup", record.idRup);
+            map.put("institution", record.institution);
+            map.put("budget", record.budget.doubleValue());
+            map.put("year", record.year);
+
+            Metadata metadata = Metadata.from(map);
 
             String comprehensiveText = String.format(
                     "Judul Proyek: %s. Instansi: %s. Tahun: %s. Kategori: %s.",

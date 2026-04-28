@@ -4,6 +4,7 @@ import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * <pre>
@@ -55,7 +56,7 @@ public class ProcurementRecord extends PanacheEntityBase {
     public LocalDateTime createdAt;
 
     @Column(name = "embedding_id")
-    public String embeddingId;
+    public UUID embeddingId;
 
     public ProcurementRecord() {
     }
@@ -164,11 +165,11 @@ public class ProcurementRecord extends PanacheEntityBase {
         this.createdAt = createdAt;
     }
 
-    public String getEmbeddingId() {
+    public UUID getEmbeddingId() {
         return embeddingId;
     }
 
-    public void setEmbeddingId(String embeddingId) {
+    public void setEmbeddingId(UUID embeddingId) {
         this.embeddingId = embeddingId;
     }
 }

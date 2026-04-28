@@ -39,7 +39,7 @@ public class EmbeddingService {
                     .from("year", record.year);
 
             TextSegment segment = TextSegment.from(record.title, metadata);
-            store.add(record.embeddingId.toString(), embeddingModel.embed(segment).content());
+            store.add(record.getEmbeddingId().toString(), embeddingModel.embed(segment).content());
 
             record.embedded = true;
         }

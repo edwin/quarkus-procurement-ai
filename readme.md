@@ -151,7 +151,7 @@ The application works with procurement records containing:
 ```bash
 curl -X POST http://localhost:8080/procurement/chat \
   -H "Content-Type: application/json" \
-  -d "Apa saja pengadaan laptop yang ada di tahun 2024?"
+  -d "Apa saja proyek di pemprov DKI Jakarta untuk tahun 2026?"
 ```
 
 ### 2. Query budget information

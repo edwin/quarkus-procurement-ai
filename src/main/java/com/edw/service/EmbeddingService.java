@@ -1,6 +1,7 @@
 package com.edw.service;
 
 import com.edw.model.ProcurementRecord;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -32,8 +33,14 @@ public class EmbeddingService {
         List<ProcurementRecord> records = ProcurementRecord.find("embedded = false").page(0, limit).list();
 
         for (ProcurementRecord record : records) {
-            TextSegment segment = TextSegment.from(record.title);
-            store.add(embeddingModel.embed(segment).content(), segment);
+            Metadata metadata = Metadata.from("id_rup", record.idRup)
+                    .from("institution", record.institution)
+                    .from("budget", record.budget.toString())
+                    .from("year", record.year);
+
+            TextSegment segment = TextSegment.from(record.title, metadata);
+            store.add(record.embeddingId.toString(), embeddingModel.embed(segment).content());
+
             record.embedded = true;
         }
     }

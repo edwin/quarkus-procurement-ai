@@ -54,23 +54,10 @@ public class ProcurementRecord extends PanacheEntityBase {
     @Column(name = "created_at", insertable = false, updatable = false)
     public LocalDateTime createdAt;
 
-    public ProcurementRecord() {
-    }
+    @Column(name = "embedding_id")
+    public String embeddingId;
 
-    public ProcurementRecord(Long id, String idRup, String title, BigDecimal budget, Integer year, String idSatker, String satkerName, String idKlpd, String institution, String klpdType, String category, Boolean embedded, LocalDateTime createdAt) {
-        this.id = id;
-        this.idRup = idRup;
-        this.title = title;
-        this.budget = budget;
-        this.year = year;
-        this.idSatker = idSatker;
-        this.satkerName = satkerName;
-        this.idKlpd = idKlpd;
-        this.institution = institution;
-        this.klpdType = klpdType;
-        this.category = category;
-        this.embedded = embedded;
-        this.createdAt = createdAt;
+    public ProcurementRecord() {
     }
 
     public Long getId() {
@@ -175,5 +162,13 @@ public class ProcurementRecord extends PanacheEntityBase {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getEmbeddingId() {
+        return embeddingId;
+    }
+
+    public void setEmbeddingId(String embeddingId) {
+        this.embeddingId = embeddingId;
     }
 }

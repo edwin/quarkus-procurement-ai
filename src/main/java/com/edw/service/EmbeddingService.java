@@ -55,14 +55,6 @@ public class EmbeddingService {
             TextSegment segment = TextSegment.from(comprehensiveText, metadata);
             store.add(embeddingModel.embed(segment).content(), segment);
 
-//            System.out.println("====================");
-//            System.out.println(comprehensiveText);
-//            System.out.println(metadata);
-//            System.out.println(embeddingModel.embed(segment).content());
-//            System.out.println(segment);
-//            System.out.println("====================");
-//            System.out.println("====================");
-
             record.embedded = true;
         }
     }

@@ -55,9 +55,6 @@ public class ProcurementRecord extends PanacheEntityBase {
     @Column(name = "created_at", insertable = false, updatable = false)
     public LocalDateTime createdAt;
 
-    @Column(name = "embedding_id")
-    public UUID embeddingId;
-
     public ProcurementRecord() {
     }
 
@@ -163,13 +160,5 @@ public class ProcurementRecord extends PanacheEntityBase {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public UUID getEmbeddingId() {
-        return embeddingId;
-    }
-
-    public void setEmbeddingId(UUID embeddingId) {
-        this.embeddingId = embeddingId;
     }
 }

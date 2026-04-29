@@ -5,6 +5,7 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -40,17 +41,27 @@ public class EmbeddingService {
             map.put("id_rup", record.idRup);
             map.put("institution", record.institution);
             map.put("budget", record.budget.doubleValue());
-            map.put("year", record.year);
+            map.put("year", record.year.intValue());
+            map.put("category", record.category);
+            map.put("name", record.title);
 
             Metadata metadata = Metadata.from(map);
 
             String comprehensiveText = String.format(
-                    "Judul Proyek: %s. Instansi: %s. Tahun: %s. Kategori: %s.",
-                    record.title, record.institution, record.year, record.category
+                    "Judul Proyek (title) : %s. Instansi (institution) : %s. Tahun (year): %s. Kategori (category): %s. Budget atau anggaran: %s. Kode Proyek : %s",
+                    record.title, record.institution, record.year, record.category, record.budget, record.idRup
             );
 
             TextSegment segment = TextSegment.from(comprehensiveText, metadata);
-            store.add(record.getEmbeddingId().toString(), embeddingModel.embed(segment).content());
+            store.add(embeddingModel.embed(segment).content(), segment);
+
+//            System.out.println("====================");
+//            System.out.println(comprehensiveText);
+//            System.out.println(metadata);
+//            System.out.println(embeddingModel.embed(segment).content());
+//            System.out.println(segment);
+//            System.out.println("====================");
+//            System.out.println("====================");
 
             record.embedded = true;
         }

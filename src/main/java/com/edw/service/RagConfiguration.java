@@ -33,8 +33,8 @@ public class RagConfiguration {
         EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(store)
                 .embeddingModel(embeddingModel)
-                .maxResults(15)
-                .minScore(0.2)
+                .maxResults(10)
+                .minScore(0.3)
                 .build();
 
         return DefaultRetrievalAugmentor.builder()

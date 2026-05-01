@@ -5,6 +5,8 @@ import com.edw.service.ProcurementAssistant;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <pre>
@@ -24,6 +26,8 @@ public class ChatResource {
 
     @Inject
     EmbeddingService embeddingService;
+
+    private Logger logger = LoggerFactory.getLogger(ChatResource.class);
 
     @POST
     @Path("/chat")

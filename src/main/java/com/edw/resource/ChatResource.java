@@ -26,7 +26,7 @@ public class ChatResource {
 
     @OnOpen
     String welcome() {
-        return "Welcome, my name is Procurement-AI, how can I help you today?";
+        return "Selamat Datang, nama saya Procurement-AI, apakah ada yang bisa saya bantu?";
     }
 
     @OnTextMessage

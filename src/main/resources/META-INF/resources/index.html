@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procurement AI Chat</title>
+
+    <link rel="stylesheet" href="/css/chat.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+</head>
+<body>
+
+<div class="chat-container">
+
+    <div class="chat-header">
+        Procurement AI Assistant
+    </div>
+
+    <!-- Connection status -->
+    <div id="status" class="status">
+        Connecting...
+    </div>
+
+    <!-- Chat messages -->
+    <div id="chat-box"></div>
+
+    <!-- Input -->
+    <div class="chat-form">
+        <input
+                id="messageInput"
+                type="text"
+                placeholder="Ask about procurement data..."
+                autocomplete="off"
+        />
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+</div>
+
+<script src="/js/app.js"></script>
+
+</body>
+</html>

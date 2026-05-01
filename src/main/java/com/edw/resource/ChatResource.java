@@ -1,10 +1,10 @@
 package com.edw.resource;
 
-import com.edw.service.EmbeddingService;
 import com.edw.service.ProcurementAssistant;
+import io.quarkus.websockets.next.OnOpen;
+import io.quarkus.websockets.next.OnTextMessage;
+import io.quarkus.websockets.next.WebSocket;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,29 +16,21 @@ import org.slf4j.LoggerFactory;
  * @author Muhammad Edwin < edwin at redhat dot com >
  * 28 Apr 2026 15:53
  */
-@Path("/procurement")
-@Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
+@WebSocket(path = "/procurement/chat")
 public class ChatResource {
 
     @Inject
     ProcurementAssistant assistant;
 
-    @Inject
-    EmbeddingService embeddingService;
-
     private Logger logger = LoggerFactory.getLogger(ChatResource.class);
 
-    @POST
-    @Path("/chat")
+    @OnOpen
+    String welcome() {
+        return "Welcome, my name is Procurement-AI, how can I help you today?";
+    }
+
+    @OnTextMessage
     public String ask(String question) {
         return assistant.chat(question);
     }
-
-    @POST
-    @Path("/ingest")
-    public void train(@QueryParam("limit") int limit) {
-        embeddingService.ingestBatch(limit);
-    }
-
 }

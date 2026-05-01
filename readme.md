@@ -97,6 +97,42 @@ quarkus.log.category."com.edw".level=DEBUG
 java -jar target/quarkus-app/quarkus-run.jar
 ```
 
+## Web User Interface
+
+The application includes a modern, responsive web-based chat interface that provides an intuitive way to interact with the Procurement AI Assistant.
+
+### UI Features
+
+- 🎨 **Modern Design**: Clean, dark-themed interface with Red Hat branding
+- 💬 **Real-time Chat**: WebSocket-based communication for instant responses
+- ⚡ **Responsive**: Works seamlessly on desktop and mobile devices
+- 🕒 **Timestamps**: Each message includes precise timing information
+- 🔄 **Loading Indicators**: Visual feedback during message processing
+- ⌨️ **Keyboard Shortcuts**: Ctrl+Enter to send messages, Enter for new lines
+- 🔗 **Connection Status**: Real-time connection status monitoring
+
+### Accessing the Web UI
+
+Once the application is running, open your web browser and navigate to:
+
+```
+http://localhost:8080
+```
+
+The interface will automatically connect to the backend and display the connection status. You can then start asking questions about procurement data in natural language.
+
+![Procurement AI Chat Interface](images/screenshot1.png)
+
+*Screenshot showing the web-based chat interface with Red Hat branding and real-time messaging capabilities.*
+
+### Usage Tips
+
+- Use **Ctrl+Enter** to send messages quickly
+- The interface supports multi-line input - press **Enter** for new lines
+- Connection status is displayed at the top of the chat window
+- Messages include timestamps for reference
+- The interface automatically scrolls to show the latest messages
+
 ## API Documentation
 
 ### Chat Endpoint

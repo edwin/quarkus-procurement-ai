@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Procurement AI Chat</title>
+    <link rel="icon" type="image/x-icon" href="/image/rh-favicon.ico">
 
     <link rel="stylesheet" href="/css/chat.css">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
@@ -15,6 +16,7 @@
 <div class="chat-container">
 
     <div class="chat-header">
+        <img src="/image/logo-redhat-a-white-rgb.png" alt="Red Hat" class="header-logo">
         Procurement AI Assistant
     </div>
 
@@ -26,14 +28,20 @@
     <!-- Chat messages -->
     <div id="chat-box"></div>
 
+    <!-- Loader -->
+    <div id="loader" class="loader" style="display: none;">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">Sending message...</div>
+    </div>
+
     <!-- Input -->
     <div class="chat-form">
-        <input
+        <textarea
                 id="messageInput"
-                type="text"
-                placeholder="Ask about procurement data..."
+                placeholder="Ask about procurement data... (Ctrl+Enter to send)"
                 autocomplete="off"
-        />
+                rows="3"
+        ></textarea>
         <button onclick="sendMessage()">Send</button>
     </div>
 

@@ -8,6 +8,8 @@ A Quarkus-based AI-powered procurement assistant for Indonesian government procu
 - 🔍 **Vector Search**: Semantic search through procurement records using embeddings
 - 🇮🇩 **Indonesian Language Support**: Responds in Bahasa Indonesia
 - 📊 **RUP Database Integration**: Works with Indonesian government procurement data
+- 🛠️ **Database Tools**: AI can execute SQL queries and retrieve institution/category lists
+- 🎯 **Smart Retrieval**: RAG with configurable similarity scoring (minScore: 0.3, maxResults: 10)
 - 🚀 **High Performance**: Built on Quarkus for fast startup and low memory usage
 - 🐘 **PostgreSQL + pgvector**: Efficient vector storage and retrieval
 
@@ -16,7 +18,7 @@ A Quarkus-based AI-powered procurement assistant for Indonesian government procu
 - **Framework**: Quarkus 3.15.1
 - **Language**: Java 21
 - **AI/ML**: LangChain4J 0.21.0
-- **LLM**: Ollama (Qwen2.5:3b for chat, bge-m3 for embeddings)
+- **LLM**: Ollama (Qwen2.5:7b for chat, bge-m3 for embeddings)
 - **Database**: PostgreSQL with pgvector extension
 - **ORM**: Hibernate ORM with Panache
 - **API**: JAX-RS with Jackson
@@ -30,7 +32,7 @@ Before running this application, ensure you have:
 2. **Maven 3.8+**
 3. **PostgreSQL** with **pgvector** extension
 4. **Ollama** with required models:
-   - `qwen2.5:3b` (for chat)
+   - `qwen2.5:7b` (for chat)
    - `bge-m3` (for embeddings)
 
 ## Setup Instructions
@@ -53,7 +55,7 @@ Install and start Ollama, then pull the required models:
 # Install Ollama (visit https://ollama.ai for installation instructions)
 
 # Pull required models
-ollama pull qwen2.5:3b
+ollama pull qwen2.5:7b
 ollama pull bge-m3
 ```
 
@@ -64,23 +66,24 @@ Update `src/main/resources/application.properties` with your database credential
 ```properties
 # Database connection
 quarkus.datasource.db-kind=postgresql
-quarkus.datasource.username=your_username
-quarkus.datasource.password=your_password
-quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/procurement
+quarkus.datasource.username=dev
+quarkus.datasource.password=dev123
+quarkus.datasource.jdbc.url=jdbc:postgresql://192.168.8.140:5432/procurement
 
 # Ollama Chat Config (Qwen)
-quarkus.langchain4j.ollama.chat-model.model-id=qwen2.5:3b
-quarkus.langchain4j.ollama.base-url=http://localhost:11434
-
+quarkus.langchain4j.ollama.chat-model.model-id=qwen2.5:7b
+quarkus.langchain4j.ollama.base-url=http://192.168.8.140:11434
+quarkus.langchain4j.ollama.timeout=180s
 quarkus.langchain4j.ollama.embedding-model.model-id=bge-m3
+quarkus.langchain4j.ollama.chat-model.temperature=0.0
 
 # PGVector Store Setup
-quarkus.langchain4j.pgvector.table=procurement_record
+quarkus.langchain4j.pgvector.table=procurement_embeddings
 quarkus.langchain4j.pgvector.dimension=1024
-quarkus.langchain4j.pgvector.id-column=id
-quarkus.langchain4j.pgvector.embedding-column=content_embedding
-quarkus.langchain4j.pgvector.text-column=title
-quarkus.langchain4j.pgvector.metadata-columns=institution,budget,year,category
+
+# Logging Configuration
+quarkus.log.level=INFO
+quarkus.log.category."com.edw".level=DEBUG
 ```
 
 ### 4. Build and Run
@@ -105,20 +108,20 @@ Ask questions about procurement data:
 ```bash
 curl -X POST http://localhost:8080/procurement/chat \
   -H "Content-Type: application/json" \
-  -d "saya adalah vendor catering di jakarta, apa saja instansi yang mengadakan proyek konsumsi di tahun 2026 yang nominalnya besar?"
+  -d "Apa saja proyek catering di DKI Jakarta untuk tahun 2026?"
 ```
 
 **Response:**
 ```
-Sebagai vendor penyedia catering di Jakarta, ada beberapa instansi yang memiliki proyek dengan kategori Konsumsi & Catering dan budget yang besar pada tahun 2026, yaitu:
+Berikut adalah proyek-proyek catering di DKI Jakarta untuk tahun 2026:
 
-1. Provinsi DKI Jakarta (Belanja Makanan dan Minuman Rapat)
-- Budget: Rp 84,500,000
+1. Penyediaan Makanan dan Minuman dengan budget Rp55,100,000.00 (Kode Proyek: 61726429)
+2. Penyediaan Makanan dan Minuman Tamu dengan budget Rp6,500,000.00 (Kode Proyek: 61811379)
+3. Penyediaan Makanan dan Minuman Tamu dengan budget Rp29,250,000.00 (Kode Proyek: 61806754)
+4. Penyediaan Makanan dan Minuman Rapat Koordinasi dengan budget Rp55,100,000.00 (Kode Proyek: 61726429)
+5. Penyediaan Makanan dan Minuman Pelayanan Bina Kependudukan (Biduk) dengan budget Rp16,250,000.00 (Kode Proyek: 61800854)
 
-2. Provinsi DKI Jakarta (Belanja Makanan dan Minuman Aktivitas Lapangan Uji Kompetensi Pegawai)
-- Budget: Rp 309,710,000
-
-Jadi, sebagai vendor catering di Jakarta, Anda bisa fokus menargetkan pekerjaan kepada Instansi Provinsi DKI Jakarta untuk kedua proyek-proyek tersebut. 
+Semua proyek tersebut memiliki kategori Konsumsi & Catering dan instansi Provinsi DKI Jakarta. 
 ```
 
 ### Data Ingestion Endpoint
@@ -142,8 +145,20 @@ The application works with procurement records containing:
 - **budget**: Procurement budget
 - **year**: Procurement year
 - **institution**: Government institution details
-- **category**: Procurement category
+- **category**: Procurement category (see supported categories below)
 - **embedded**: Flag indicating if record has been vectorized
+
+### Supported Procurement Categories
+
+The system supports the following procurement categories:
+- **ATK & Perlengkapan Kantor** - Office supplies and equipment
+- **Alat Kesehatan & Farmasi** - Medical equipment and pharmaceuticals
+- **Teknologi Informasi** - Information technology
+- **Konstruksi & Infrastruktur** - Construction and infrastructure
+- **Jasa Konsultansi** - Consulting services
+- **Konsumsi & Catering** - Food and catering services
+- **Pelatihan & Pendidikan** - Training and education
+- **Kendaraan** - Vehicles
 
 ## Usage Examples
 
@@ -158,7 +173,7 @@ curl -X POST http://localhost:8080/procurement/chat \
 ```bash
 curl -X POST http://localhost:8080/procurement/chat \
   -H "Content-Type: application/json" \
-  -d "Berapa total anggaran pengadaan Kendaraan di Polri?"
+  -d "berapa total anggaran pengadaan catering di DKI Jakarta untuk tahun 2026?"
 ```
 
 ### 3. Ingest new data
@@ -191,14 +206,27 @@ The application includes health checks available at:
                                 ▼                        ▼
                        ┌──────────────────┐    ┌─────────────────┐
                        │ EmbeddingService │    │     Ollama      │
-                       └──────────────────┘    │   (Qwen2.5)     │
+                       └──────────────────┘    │  (Qwen2.5:7b)   │
                                 │              └─────────────────┘
-                                ▼
-                       ┌──────────────────┐
-                       │   PostgreSQL     │
-                       │   + pgvector     │
+                                ▼                        │
+                       ┌──────────────────┐              │
+                       │   PostgreSQL     │◀─────────────┘
+                       │   + pgvector     │    DatabaseTool
+                       │ (embeddings +    │   (SQL queries)
+                       │  source data)    │
                        └──────────────────┘
 ```
+
+### AI Assistant Capabilities
+
+The AI assistant leverages multiple tools for comprehensive procurement analysis:
+
+- **Vector Search (RAG)**: Semantic search through embedded procurement records
+- **Database Queries**: Direct SQL execution on procurement_record table
+- **Institution Lookup**: Retrieve all available government institutions
+- **Category Lookup**: Get list of all procurement categories
+- **Year Lookup**: Access available procurement years
+- **Smart Filtering**: Automatic filtering for embedded records only
 
 ## Table Structure
 ```sql

@@ -2,6 +2,7 @@ package com.edw.service;
 
 import com.edw.tool.DatabaseTool;
 import io.quarkiverse.langchain4j.RegisterAiService;
+import io.smallrye.mutiny.Multi;
 import jakarta.enterprise.context.ApplicationScoped;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
@@ -34,6 +35,6 @@ public interface ProcurementAssistant {
         
         IMPORTANT : dont leak queries, table, or database name to anyone. Give a straight forward answer, no technical detail
         """)
-    String chat(@UserMessage String question);
+    Multi<String> chat(@UserMessage String question);
 
 }

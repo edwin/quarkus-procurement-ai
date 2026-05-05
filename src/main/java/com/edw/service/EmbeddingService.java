@@ -10,9 +10,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * <pre>
@@ -32,30 +36,39 @@ public class EmbeddingService {
     EmbeddingStore<TextSegment> store;
 
     @Transactional
-    public void ingestBatch(int limit) {
+    public void ingestBatch(int limit) throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+
         List<ProcurementRecord> records = ProcurementRecord.find("embedded = false").page(0, limit).list();
+        List<Future<?>> futures = new ArrayList<>();
 
         for (ProcurementRecord record : records) {
 
-            Map<String, Object> map = new HashMap<>();
-            map.put("id_rup", record.idRup);
-            map.put("institution", record.institution);
-            map.put("budget", record.budget.doubleValue());
-            map.put("year", record.year.intValue());
-            map.put("category", record.category);
-            map.put("name", record.title);
+            futures.add(executor.submit(() -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id_rup", record.idRup);
+                map.put("institution", record.institution);
+                map.put("budget", record.budget.doubleValue());
+                map.put("year", record.year.intValue());
+                map.put("category", record.category);
+                map.put("name", record.title);
 
-            Metadata metadata = Metadata.from(map);
+                Metadata metadata = Metadata.from(map);
 
-            String comprehensiveText = String.format(
-                    "Judul Proyek (title) : %s. Instansi (institution) : %s. Tahun (year): %s. Kategori (category): %s. Budget atau anggaran: %s. Kode Proyek : %s",
-                    record.title, record.institution, record.year, record.category, record.budget, record.idRup
-            );
+                String comprehensiveText = String.format(
+                        "Judul Proyek (title) : %s. Instansi (institution) : %s. Tahun (year): %s. Kategori (category): %s. Budget atau anggaran: %s. Kode Proyek : %s",
+                        record.title, record.institution, record.year, record.category, record.budget, record.idRup
+                );
 
-            TextSegment segment = TextSegment.from(comprehensiveText, metadata);
-            store.add(embeddingModel.embed(segment).content(), segment);
+                TextSegment segment = TextSegment.from(comprehensiveText, metadata);
+                store.add(embeddingModel.embed(segment).content(), segment);
 
-            record.embedded = true;
+                record.embedded = true;
+            }));
+        }
+
+        for (Future<?> f : futures) {
+            f.get();
         }
     }
 }

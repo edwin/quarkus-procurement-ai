@@ -63,52 +63,6 @@ public class DatabaseTool {
         }
     }
 
-    @Tool("""
-        
-        use this method to connect to a postgresql database and and get list of available institution
-        """)
-    public String getAllInstitution() {
-        String query = "SELECT DISTINCT institution FROM procurement_record where embedded=true ";
-        try (Connection conn = dataSource.getConnection();
-            Statement stmt = conn.createStatement()) {
-            ResultSet rs = stmt.executeQuery(query);
-            return convertResultSetToString(rs);
-        } catch (SQLException e) {
-            return "Error executing query: " + e.getMessage();
-        }
-    }
-
-    @Tool("""
-        
-        use this method to connect to a postgresql database and and get list of available category
-        """)
-    public String getAllCategory() {
-        String query = "SELECT DISTINCT category FROM procurement_record where embedded=true ";
-        try (Connection conn = dataSource.getConnection();
-             Statement stmt = conn.createStatement()) {
-            ResultSet rs = stmt.executeQuery(query);
-            return convertResultSetToString(rs);
-        } catch (SQLException e) {
-            return "Error executing query: " + e.getMessage();
-        }
-    }
-
-
-    @Tool("""
-        
-        use this method to connect to a postgresql database and and get list of available years
-        """)
-    public String getAllYear() {
-        String query = "SELECT DISTINCT year FROM procurement_record where embedded=true ";
-        try (Connection conn = dataSource.getConnection();
-             Statement stmt = conn.createStatement()) {
-            ResultSet rs = stmt.executeQuery(query);
-            return convertResultSetToString(rs);
-        } catch (SQLException e) {
-            return "Error executing query: " + e.getMessage();
-        }
-    }
-
     private String convertResultSetToString(ResultSet rs) {
         StringBuilder result = new StringBuilder();
         try {
@@ -120,16 +74,13 @@ public class DatabaseTool {
                             .append(rs.getString(i))
                             .append(", ");
                 }
-                result.delete(result.length() - 2, result.length()); // Remove trailing comma and space
+                result.delete(result.length() - 2, result.length());
                 result.append("\n");
             }
         } catch (SQLException e) {
             return "Error processing ResultSet: " + e.getMessage();
         }
 
-        String response = result.toString();
-        logger.debug("response : {} ",response);
-
-        return response;
+        return result.toString();
     }
 }

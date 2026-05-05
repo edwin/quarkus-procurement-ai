@@ -23,7 +23,7 @@ public class IngestResource {
 
     @POST
     @Path("/ingest")
-    public void train(@QueryParam("limit") int limit) {
+    public void train(@QueryParam("limit") int limit) throws Exception {
         embeddingService.ingestBatch(limit);
     }
 

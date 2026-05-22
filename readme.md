@@ -11,15 +11,16 @@ A Quarkus-based AI-powered procurement assistant for Indonesian government procu
 - 🛠️ **Database Tools**: AI can execute SQL queries and retrieve institution/category lists
 - 🎯 **Smart Retrieval**: RAG with configurable similarity scoring (minScore: 0.3, maxResults: 10)
 - 🚀 **High Performance**: Built on Quarkus for fast startup and low memory usage
-- 🐘 **PostgreSQL + pgvector**: Efficient vector storage and retrieval
+- 🚀 **Infinispan Vector Store**: High-performance in-memory vector storage and retrieval
 
 ## Technologies Used
 
-- **Framework**: Quarkus 3.15.1
+- **Framework**: Quarkus 3.34.6
 - **Language**: Java 21
-- **AI/ML**: LangChain4J 0.21.0
+- **AI/ML**: LangChain4J 1.9.1
 - **LLM**: Ollama (Qwen2.5:7b for chat, bge-m3 for embeddings)
-- **Database**: PostgreSQL with pgvector extension
+- **Vector Store**: Infinispan for embeddings storage and retrieval
+- **Database**: PostgreSQL for structured data
 - **ORM**: Hibernate ORM with Panache
 - **API**: JAX-RS with Jackson
 - **Build Tool**: Maven
@@ -30,8 +31,9 @@ Before running this application, ensure you have:
 
 1. **Java 21** or later
 2. **Maven 3.8+**
-3. **PostgreSQL** with **pgvector** extension
-4. **Ollama** with required models:
+3. **PostgreSQL** (for structured procurement data)
+4. **Infinispan Server** (for vector embeddings storage)
+5. **Ollama** with required models:
    - `qwen2.5:7b` (for chat)
    - `bge-m3` (for embeddings)
 
@@ -39,15 +41,26 @@ Before running this application, ensure you have:
 
 ### 1. Database Setup
 
-Create a PostgreSQL database with pgvector extension:
+Create a PostgreSQL database for structured data:
 
 ```sql
 CREATE DATABASE procurement;
-\c procurement;
-CREATE EXTENSION vector;
 ```
 
-### 2. Ollama Setup
+### 2. Infinispan Server Setup
+
+Install and start Infinispan Server for vector embeddings storage:
+
+```bash
+# Download Infinispan Server from https://infinispan.org/download/
+# Extract and start the server
+bin/server.sh
+
+# Or using Docker:
+docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" quay.io/infinispan/server:15.0
+```
+
+### 3. Ollama Setup
 
 Install and start Ollama, then pull the required models:
 
@@ -59,9 +72,9 @@ ollama pull qwen2.5:7b
 ollama pull bge-m3
 ```
 
-### 3. Application Configuration
+### 4. Application Configuration
 
-Update `src/main/resources/application.properties` with your database credentials:
+Update `src/main/resources/application.properties` with your database and Infinispan credentials:
 
 ```properties
 # Database connection
@@ -73,20 +86,30 @@ quarkus.datasource.jdbc.url=jdbc:postgresql://192.168.8.140:5432/procurement
 # Ollama Chat Config (Qwen)
 quarkus.langchain4j.ollama.chat-model.model-id=qwen2.5:7b
 quarkus.langchain4j.ollama.base-url=http://192.168.8.140:11434
-quarkus.langchain4j.ollama.timeout=180s
+quarkus.langchain4j.ollama.timeout=360s
 quarkus.langchain4j.ollama.embedding-model.model-id=bge-m3
 quarkus.langchain4j.ollama.chat-model.temperature=0.0
 
-# PGVector Store Setup
-quarkus.langchain4j.pgvector.table=procurement_embeddings
-quarkus.langchain4j.pgvector.dimension=1024
+# Infinispan Store Setup
+quarkus.langchain4j.infinispan.cache-name=procurement_embeddings
+quarkus.langchain4j.infinispan.dimension=1024
+quarkus.langchain4j.infinispan.create-cache=true
+
+# Infinispan Client Configuration
+quarkus.infinispan-client.hosts=192.168.8.140:11222
+quarkus.infinispan-client.username=admin
+quarkus.infinispan-client.password=password
+quarkus.infinispan-client.client-intelligence=BASIC
 
 # Logging Configuration
 quarkus.log.level=INFO
 quarkus.log.category."com.edw".level=DEBUG
+
+# WebSocket Configuration
+quarkus.websockets-next.server.supported-subprotocols=chat
 ```
 
-### 4. Build and Run
+### 5. Build and Run
 
 ```bash
 # Build the application
@@ -246,11 +269,16 @@ The application includes health checks available at:
                                 │              └─────────────────┘
                                 ▼                        │
                        ┌──────────────────┐              │
-                       │   PostgreSQL     │◀─────────────┘
-                       │   + pgvector     │    DatabaseTool
-                       │ (embeddings +    │   (SQL queries)
-                       │  source data)    │
-                       └──────────────────┘
+                       │    Infinispan    │              │
+                       │   (embeddings)   │              │
+                       └──────────────────┘              │
+                                                         │
+                                               ┌─────────▼─────────┐
+                                               │   PostgreSQL      │
+                                               │ (structured data) │
+                                               │   DatabaseTool    │
+                                               │  (SQL queries)    │
+                                               └───────────────────┘
 ```
 
 ### AI Assistant Capabilities

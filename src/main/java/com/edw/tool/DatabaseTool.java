@@ -63,16 +63,25 @@ public class DatabaseTool {
         }
     }
 
+    
     private String convertResultSetToString(ResultSet rs) {
         StringBuilder result = new StringBuilder();
         try {
             int columnCount = rs.getMetaData().getColumnCount();
             while (rs.next()) {
                 for (int i = 1; i <= columnCount; i++) {
-                    result.append(rs.getMetaData().getColumnName(i))
-                            .append(": ")
-                            .append(rs.getString(i))
-                            .append(", ");
+                    String columnName = rs.getMetaData().getColumnName(i);
+                    int columnType = rs.getMetaData().getColumnType(i);
+
+                    result.append(columnName).append(": ");
+                    if (columnType == java.sql.Types.INTEGER || columnType == java.sql.Types.BIGINT ||
+                            columnType == java.sql.Types.NUMERIC || columnType == java.sql.Types.DECIMAL ||
+                            columnType == java.sql.Types.FLOAT || columnType == java.sql.Types.DOUBLE) {
+                        result.append(rs.getObject(i).toString().replace(",", "").split("\\.")[0]);
+                    } else {
+                        result.append(rs.getObject(i));
+                    }
+                    result.append(", ");
                 }
                 result.delete(result.length() - 2, result.length());
                 result.append("\n");

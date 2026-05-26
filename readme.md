@@ -18,11 +18,11 @@ A Quarkus-based AI-powered procurement assistant for Indonesian government procu
 - **Framework**: Quarkus 3.34.6
 - **Language**: Java 21
 - **AI/ML**: LangChain4J 1.9.1
-- **LLM**: Ollama (Qwen2.5:7b for chat, bge-m3 for embeddings)
+- **LLM**: Ollama (Qwen2.5:3b for chat, mxbai-embed-large for embeddings)
 - **Vector Store**: Infinispan for embeddings storage and retrieval
 - **Database**: PostgreSQL for structured data
 - **ORM**: Hibernate ORM with Panache
-- **API**: JAX-RS with Jackson
+- **API**: JAX-RS with Jackson, WebSocket for real-time chat
 - **Build Tool**: Maven
 
 ## Prerequisites
@@ -34,8 +34,8 @@ Before running this application, ensure you have:
 3. **PostgreSQL** (for structured procurement data)
 4. **Infinispan Server** (for vector embeddings storage)
 5. **Ollama** with required models:
-   - `qwen2.5:7b` (for chat)
-   - `bge-m3` (for embeddings)
+   - `qwen2.5:3b` (for chat)
+   - `mxbai-embed-large` (for embeddings)
 
 ## Setup Instructions
 
@@ -68,8 +68,8 @@ Install and start Ollama, then pull the required models:
 # Install Ollama (visit https://ollama.ai for installation instructions)
 
 # Pull required models
-ollama pull qwen2.5:7b
-ollama pull bge-m3
+ollama pull qwen2.5:3b
+ollama pull mxbai-embed-large
 ```
 
 ### 4. Application Configuration
@@ -84,10 +84,10 @@ quarkus.datasource.password=dev123
 quarkus.datasource.jdbc.url=jdbc:postgresql://192.168.8.140:5432/procurement
 
 # Ollama Chat Config (Qwen)
-quarkus.langchain4j.ollama.chat-model.model-id=qwen2.5:7b
+quarkus.langchain4j.ollama.chat-model.model-id=qwen2.5:3b
 quarkus.langchain4j.ollama.base-url=http://192.168.8.140:11434
 quarkus.langchain4j.ollama.timeout=360s
-quarkus.langchain4j.ollama.embedding-model.model-id=bge-m3
+quarkus.langchain4j.ollama.embedding-model.model-id=mxbai-embed-large
 quarkus.langchain4j.ollama.chat-model.temperature=0.0
 
 # Infinispan Store Setup
@@ -158,19 +158,41 @@ The interface will automatically connect to the backend and display the connecti
 
 ## API Documentation
 
-### Chat Endpoint
+### Chat WebSocket
 
-Ask questions about procurement data:
+The chat functionality is implemented using WebSocket for real-time streaming responses:
 
-**POST** `/procurement/chat`
+**WebSocket Endpoint:** `ws://localhost:8080/procurement/chat`
 
-```bash
-curl -X POST http://localhost:8080/procurement/chat \
-  -H "Content-Type: application/json" \
-  -d "Apa saja proyek catering di DKI Jakarta untuk tahun 2026?"
+The WebSocket connection provides:
+- **Welcome Message**: Automatic greeting when connection is established
+- **Streaming Responses**: Real-time token-by-token response streaming
+- **Error Handling**: Graceful error recovery with user-friendly messages
+- **Connection Management**: Automatic connection status monitoring
+
+**Example using JavaScript:**
+```javascript
+const ws = new WebSocket('ws://localhost:8080/procurement/chat');
+
+ws.onopen = function() {
+    console.log('Connected to Procurement AI');
+};
+
+ws.onmessage = function(event) {
+    if (event.data === '[DONE]') {
+        console.log('Response complete');
+    } else if (event.data.startsWith('[ERROR]')) {
+        console.log('Error:', event.data);
+    } else {
+        console.log('Token:', event.data);
+    }
+};
+
+// Send a question
+ws.send("Apa saja proyek catering di DKI Jakarta untuk tahun 2026?");
 ```
 
-**Response:**
+**Sample Response Stream:**
 ```
 Berikut adalah proyek-proyek catering di DKI Jakarta untuk tahun 2026:
 
@@ -180,7 +202,8 @@ Berikut adalah proyek-proyek catering di DKI Jakarta untuk tahun 2026:
 4. Penyediaan Makanan dan Minuman Rapat Koordinasi dengan budget Rp55,100,000.00 (Kode Proyek: 61726429)
 5. Penyediaan Makanan dan Minuman Pelayanan Bina Kependudukan (Biduk) dengan budget Rp16,250,000.00 (Kode Proyek: 61800854)
 
-Semua proyek tersebut memiliki kategori Konsumsi & Catering dan instansi Provinsi DKI Jakarta. 
+Semua proyek tersebut memiliki kategori Konsumsi & Catering dan instansi Provinsi DKI Jakarta.
+[DONE]
 ```
 
 ### Data Ingestion Endpoint
@@ -221,18 +244,20 @@ The system supports the following procurement categories:
 
 ## Usage Examples
 
-### 1. Ask about specific procurement items
-```bash
-curl -X POST http://localhost:8080/procurement/chat \
-  -H "Content-Type: application/json" \
-  -d "Apa saja proyek di pemprov DKI Jakarta untuk tahun 2026?"
-```
+### 1. Using the Web Interface
+The easiest way to interact with the Procurement AI is through the web interface:
+1. Open your browser and navigate to `http://localhost:8080`
+2. Wait for the WebSocket connection to establish
+3. Type your questions in Indonesian, for example:
+   - "Apa saja proyek di pemprov DKI Jakarta untuk tahun 2026?"
+   - "Berapa total anggaran pengadaan catering di DKI Jakarta untuk tahun 2026?"
+   - "Tampilkan proyek teknologi informasi dengan budget terbesar"
 
-### 2. Query budget information
-```bash
-curl -X POST http://localhost:8080/procurement/chat \
-  -H "Content-Type: application/json" \
-  -d "berapa total anggaran pengadaan catering di DKI Jakarta untuk tahun 2026?"
+### 2. Using WebSocket Programmatically
+Connect to the WebSocket endpoint and send messages:
+```javascript
+const ws = new WebSocket('ws://localhost:8080/procurement/chat');
+ws.onopen = () => ws.send("Apa saja proyek catering di Jakarta?");
 ```
 
 ### 3. Ingest new data
@@ -259,13 +284,14 @@ The application includes health checks available at:
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   REST Client   │───▶│  ChatResource    │───▶│ ProcurementAI   │
+│  WebSocket      │───▶│  ChatResource    │───▶│ ProcurementAI   │
+│   Client        │    │   (WebSocket)    │    │   Assistant     │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                                 │                        │
                                 ▼                        ▼
                        ┌──────────────────┐    ┌─────────────────┐
                        │ EmbeddingService │    │     Ollama      │
-                       └──────────────────┘    │  (Qwen2.5:7b)   │
+                       └──────────────────┘    │  (Qwen2.5:3b)   │
                                 │              └─────────────────┘
                                 ▼                        │
                        ┌──────────────────┐              │

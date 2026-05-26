@@ -44,6 +44,6 @@ public class ChatResource {
                     .onItem().transform(token -> token),
                 Multi.createFrom().item("[DONE]")
         )
-        .onFailure().recoverWithItem(err -> "[ERROR] " + err.toString());
+        .onFailure().recoverWithItem(err -> "[ERROR] Something went wrong: please contact support.");
     }
 }

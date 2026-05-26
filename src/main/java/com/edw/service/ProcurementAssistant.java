@@ -1,6 +1,8 @@
 package com.edw.service;
 
+import com.edw.config.GuardrailsConfig;
 import com.edw.tool.DatabaseTool;
+import dev.langchain4j.service.guardrail.InputGuardrails;
 import io.quarkiverse.langchain4j.RegisterAiService;
 import io.smallrye.mutiny.Multi;
 import dev.langchain4j.service.SystemMessage;
@@ -15,6 +17,7 @@ import dev.langchain4j.service.UserMessage;
  * 28 Apr 2026 15:43
  */
 @RegisterAiService(tools = DatabaseTool.class)
+@InputGuardrails(GuardrailsConfig.class)
 public interface ProcurementAssistant {
 
     @SystemMessage("""

@@ -59,70 +59,91 @@ public class EmbeddingService {
     DoclingServeApi doclingServeApi;
 
     /**
-     * Processes procurement records in batch. Retrieves a specified number of records
-     * that have not been embedded, generates their embeddings using a configured
-     * embedding model, associates them with metadata, and stores them in the embedding store.
-     * Records are marked as embedded after processing.
+     * Ingests a batch of procurement records and processes their embeddings.
      *
-     * @param limit the maximum number of records to process in a single batch
-     * @throws Exception if an error occurs during processing
+     * This method retrieves a batch of procurement records with a specified limit,
+     * processes them to generate text segments and corresponding embeddings,
+     * and stores the embeddings. Records that are successfully processed will
+     * have their "embedded" status updated to true.
+     *
+     * The processing operates asynchronously, utilizing a fixed thread pool
+     * for improved performance.
+     *
+     * @param limit the number of procurement records to process in a single batch
+     * @throws Exception if an error occurs during the processing or embedding of records
      */
     @Transactional
     public void ingestBatch(int limit) throws Exception {
         ExecutorService executor = Executors.newFixedThreadPool(8);
 
-        List<ProcurementRecord> records = ProcurementRecord.find("embedded = false").page(0, limit).list();
-        List<Future<?>> futures = new ArrayList<>();
+        List<ProcurementRecord> records = ProcurementRecord.find("embedded = false")
+                .page(0, limit).list();
 
-        List<Embedding> embeddings = new ArrayList<>();
-        List<TextSegment> segments = new ArrayList<>();
+        List<Future<Map.Entry<Embedding, TextSegment>>> futures = new ArrayList<>();
 
         for (ProcurementRecord record : records) {
-
             futures.add(executor.submit(() -> {
                 Map<String, Object> map = new HashMap<>();
-                map.put("id_rup", record.idRup);
-                map.put("institution", record.institution);
-                map.put("budget", record.budget.intValue());
-                map.put("year", record.year.intValue());
-                map.put("category", record.category);
-                map.put("name", record.title);
-
-                Metadata metadata = Metadata.from(map);
+                map.put("id_rup",        record.idRup);
+                map.put("institution",   record.institution);
+                map.put("budget",        record.budget.intValue());
+                map.put("year",          record.year.intValue());
+                map.put("category",      record.category);
+                map.put("name",          record.title);
 
                 String comprehensiveText = String.format(
-                        "Judul Proyek (title) : %s. Instansi (institution) : %s. Tahun (year): %s. Kategori (category): %s. Budget atau anggaran: %s. Kode Proyek : %s",
-                        record.title, record.institution, record.year, record.category, record.budget.intValue(), record.idRup
+                        "Judul Proyek (title) : %s. Instansi (institution) : %s. " +
+                                "Tahun (year): %s. Kategori (category): %s. " +
+                                "Budget atau anggaran: %s. Kode Proyek : %s",
+                        record.title, record.institution, record.year,
+                        record.category, record.budget.intValue(), record.idRup
                 );
 
-                TextSegment segment = TextSegment.from(comprehensiveText, metadata);
+                TextSegment segment = TextSegment.from(comprehensiveText, Metadata.from(map));
+                Embedding embedding  = embeddingModel.embed(segment).content();
 
-                embeddings.add(embeddingModel.embed(segment).content());
-                segments.add(segment);
-
-                record.embedded = true;
-
-                if(embeddings.size() % 10 == 0) {
-                    log.info("Ingesting {} records", embeddings.size());
-                    store.addAll(embeddings, segments);
-
-                    embeddings.clear();
-                    segments.clear();
-                }
+                return Map.entry(embedding, segment);
             }));
         }
 
-        for (Future<?> f : futures) {
-            f.get();
+        List<Embedding>   embeddings = new ArrayList<>(records.size());
+        List<TextSegment> segments   = new ArrayList<>(records.size());
+
+        for (int i = 0; i < futures.size(); i++) {
+            Map.Entry<Embedding, TextSegment> result = futures.get(i).get(); // blocks until done
+            embeddings.add(result.getKey());
+            segments.add(result.getValue());
+
+            records.get(i).embedded = true;
         }
 
-        // finish the remaining embeddings
-        if(embeddings.size() > 0 && segments.size() > 0) {
-            log.info("Ingesting {} records", embeddings.size());
-            store.addAll(embeddings, segments);
+        for (int start = 0; start < embeddings.size(); start += EMBED_BATCH_SIZE) {
+            int end = Math.min(start + EMBED_BATCH_SIZE, embeddings.size());
+            List<Embedding>   batchEmb = new ArrayList<>(embeddings.subList(start, end));
+            List<TextSegment> batchSeg = new ArrayList<>(segments.subList(start, end));
+
+            log.info("Ingesting records {} to {}", start, end);
+            store.addAll(batchEmb, batchSeg);
         }
+
+        executor.shutdown();
     }
 
+    /**
+     * Processes and ingests PDF files from a predefined directory.
+     *
+     * This method scans the "pdf/" directory for files with the ".pdf" extension.
+     * For each valid file, it:
+     * - Converts the file content into markdown using an external service.
+     * - Cleans up the markdown by removing inline images (e.g., base64 image data).
+     * - Enriches the processed content with metadata, including the file name and format.
+     * - Creates a list of `Document` objects from the processed and enriched data.
+     *
+     * Finally, the documents are embedded and stored using the configured embedding service.
+     * A log message provides information on the number of successfully ingested documents.
+     *
+     * @throws Exception If any error occurs during the processing or embedding of the documents.
+     */
     public void ingestPdf() throws Exception {
         Path documentsPath = Path.of("pdf/");
         List<String> allowedExtensions = Arrays.asList("pdf");
@@ -162,6 +183,15 @@ public class EmbeddingService {
         log.info("Ingesting {} documents", docs.size());
     }
 
+    /**
+     * Converts a source file into a {@code ConvertDocumentRequest} object.
+     * This method reads the content of the provided file, encodes it in base64 format,
+     * and builds a {@code ConvertDocumentRequest} instance with the necessary options.
+     *
+     * @param sourceFile the file to be converted into a {@code ConvertDocumentRequest}
+     * @return a {@code ConvertDocumentRequest} instance containing the file's content and metadata
+     * @throws IOException if an error occurs while reading the file
+     */
     private ConvertDocumentRequest convertDocumentRequest(File sourceFile) throws IOException {
         try {
             byte[] bytes = Files.readAllBytes(sourceFile.toPath());
@@ -180,6 +210,16 @@ public class EmbeddingService {
         }
     }
 
+    /**
+     * Embeds text segments created from the provided list of documents and stores the resulting embeddings.
+     *
+     * This method splits the content of the provided documents into smaller text segments using a
+     * configured {@code DocumentBySentenceSplitter}. The segments are processed in batches to generate embeddings
+     * which are then stored along with their corresponding text segments. If any error occurs during the
+     * embedding process, the issue is logged, and processing continues for the remaining batches.
+     *
+     * @param docs the list of {@code Document} objects to be embedded and stored
+     */
     private void embedAndStore(List<Document> docs) {
         DocumentBySentenceSplitter splitter = new DocumentBySentenceSplitter(200, 20);
         List<TextSegment> segments = splitter.splitAll(docs);

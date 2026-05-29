@@ -39,9 +39,13 @@ public class ChatResource {
     
     @OnTextMessage
     public Multi<String> ask(String question) {
-        logger.debug("question : {} ",question);
+
+        logger.debug("question : {}" ,question);
+
+        String memoryId = webSocketConnection.id();
+
         return Multi.createBy().concatenating().streams(
-                assistant.chat(question, webSocketConnection.id())
+                assistant.chat(question, memoryId)
                     .onItem().transform(token -> token),
                 Multi.createFrom().item("[DONE]")
         )

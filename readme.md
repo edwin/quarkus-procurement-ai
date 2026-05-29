@@ -217,7 +217,10 @@ The interface will automatically connect to the backend and display the connecti
 
 ![Procurement AI Chat Interface](images/screenshot1.png)
 
-*Screenshot showing the web-based chat interface with Red Hat branding and real-time messaging capabilities.*
+![Procurement AI Chat Interface](images/screenshot2.png)
+
+*Screenshots showing the web-based chat interface with Red Hat branding and real-time messaging capabilities.*
+
 
 ### Usage Tips
 

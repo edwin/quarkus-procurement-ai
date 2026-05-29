@@ -110,7 +110,7 @@ public class EmbeddingService {
         List<TextSegment> segments   = new ArrayList<>(records.size());
 
         for (int i = 0; i < futures.size(); i++) {
-            Map.Entry<Embedding, TextSegment> result = futures.get(i).get(); // blocks until done
+            Map.Entry<Embedding, TextSegment> result = futures.get(i).get();
             embeddings.add(result.getKey());
             segments.add(result.getValue());
 
@@ -167,10 +167,14 @@ public class EmbeddingService {
 
                         // clean the markdown
                         markdown = markdown.replaceAll("!\\[.*?\\]\\(data:image/[^)]+\\)", "");
+                        markdown = markdown.replaceAll("(?<=\\b\\w) (?=\\w\\b)", "");
+                        markdown = markdown.replaceAll("\\n{3,}", "\n\n");
+                        markdown = markdown.replaceAll("<!--.*?-->", "");
 
                         Map<String, String> meta = new HashMap<>();
                         meta.put("file", fileName);
                         meta.put("format", extension);
+                        meta.put("source-type", "regulation");
 
                         docs.add(Document.document(markdown, Metadata.from(meta)));
                     }

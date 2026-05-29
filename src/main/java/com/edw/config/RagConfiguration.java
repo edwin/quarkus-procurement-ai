@@ -6,6 +6,7 @@ import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.MetadataFilterBuilder;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
@@ -36,15 +37,38 @@ public class RagConfiguration {
     @Produces
     @ApplicationScoped
     public RetrievalAugmentor retrievalAugmentor () {
-        EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(store)
-                .embeddingModel(embeddingModel)
-                .maxResults(10)
-                .minScore(0.3)
-                .build();
-
         return DefaultRetrievalAugmentor.builder()
-                .queryRouter(query -> List.of(retriever))
+                .queryRouter(query -> {
+                    String q = query.text().toLowerCase();
+                    if (isAggregationQuery(q)) {
+                        logger.debug("running database query for : {}", q);
+                        return List.of();
+                    }
+
+                    EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
+                            .embeddingStore(store)
+                            .embeddingModel(embeddingModel)
+                            .maxResults(5)
+                            .minScore(0.6)
+                            .filter(isRegulationQuery(q) ?
+                                        MetadataFilterBuilder.metadataKey("source-type")
+                                                .isEqualTo("regulation") :
+                                            MetadataFilterBuilder.metadataKey("source-type")
+                                                    .isNotEqualTo("regulation")
+                                    )
+                            .build();
+
+                    return List.of(retriever);
+                })
                 .build();
+    }
+
+    private boolean isAggregationQuery(String q) {
+        return q.matches(".*(tampilkan|list|show|cari|berapa|terbesar|terkecil|" +
+                "total|jumlah|terbanyak|ranking|urutan|top \\d|limit).*");
+    }
+
+    private boolean isRegulationQuery(String q) {
+        return q.matches(".*(keputusan|peraturan|nomor|tahun|sk |regulasi|kebijakan|lkpp|aturan|dokumen|document).*");
     }
 }

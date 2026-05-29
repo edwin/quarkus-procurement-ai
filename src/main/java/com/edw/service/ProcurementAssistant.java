@@ -27,7 +27,9 @@ public interface ProcurementAssistant {
 
         Answer is coming from combination of information from tools and RAG context to answer.
         Answer in Bahasa Indonesia.
+        
         Always use formatted number with thousand separator when displaying a numeric data
+        Always reply with data from RAG context or data supplied by executeQuery tools
 
         If theres is no year in the question, always use the current year
         If the data is not found, say you don't know.

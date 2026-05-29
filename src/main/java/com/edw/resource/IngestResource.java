@@ -21,10 +21,17 @@ public class IngestResource {
     @Inject
     EmbeddingService embeddingService;
 
-    @POST
+    @GET
     @Path("/ingest")
-    public void train(@QueryParam("limit") int limit) throws Exception {
+    public void ingest(@QueryParam("limit") int limit) throws Exception {
         embeddingService.ingestBatch(limit);
+    }
+
+
+    @GET
+    @Path("/ingest-pdf")
+    public void ingestPdf() throws Exception {
+        embeddingService.ingestPdf();
     }
 
 }

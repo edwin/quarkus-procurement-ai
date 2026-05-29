@@ -77,7 +77,7 @@ public class DatabaseTool {
                     if (columnType == java.sql.Types.INTEGER || columnType == java.sql.Types.BIGINT ||
                             columnType == java.sql.Types.NUMERIC || columnType == java.sql.Types.DECIMAL ||
                             columnType == java.sql.Types.FLOAT || columnType == java.sql.Types.DOUBLE) {
-                        result.append(rs.getObject(i).toString().replace(",", "").split("\\.")[0]);
+                        result.append(String.format("%,d", Long.parseLong(rs.getObject(i).toString().replace(",", "").split("\\.")[0])).replace(',', '.'));
                     } else {
                         result.append(rs.getObject(i));
                     }

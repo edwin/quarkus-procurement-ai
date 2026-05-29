@@ -36,14 +36,18 @@ public class ChatResource {
         logger.debug("WebSocket closed: {}", webSocketConnection.id());
     }
 
+    
     @OnTextMessage
     public Multi<String> ask(String question) {
         logger.debug("question : {} ",question);
         return Multi.createBy().concatenating().streams(
-                assistant.chat(question)
+                assistant.chat(question, webSocketConnection.id())
                     .onItem().transform(token -> token),
                 Multi.createFrom().item("[DONE]")
         )
-        .onFailure().recoverWithItem(err -> "[ERROR] Something went wrong: please contact support.");
+                .onFailure().recoverWithItem(err -> {
+                    logger.error("Error occurred while processing question: {}", question, err);
+                    return "[ERROR] Something went wrong: please contact support.";
+                });
     }
 }

@@ -56,7 +56,7 @@ public class EmbeddingService {
                 Map<String, Object> map = new HashMap<>();
                 map.put("id_rup", record.idRup);
                 map.put("institution", record.institution);
-                map.put("budget", record.budget.doubleValue());
+                map.put("budget", record.budget.intValue());
                 map.put("year", record.year.intValue());
                 map.put("category", record.category);
                 map.put("name", record.title);
@@ -65,7 +65,7 @@ public class EmbeddingService {
 
                 String comprehensiveText = String.format(
                         "Judul Proyek (title) : %s. Instansi (institution) : %s. Tahun (year): %s. Kategori (category): %s. Budget atau anggaran: %s. Kode Proyek : %s",
-                        record.title, record.institution, record.year, record.category, record.budget, record.idRup
+                        record.title, record.institution, record.year, record.category, record.budget.intValue(), record.idRup
                 );
 
                 TextSegment segment = TextSegment.from(comprehensiveText, metadata);

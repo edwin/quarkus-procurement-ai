@@ -2,6 +2,7 @@ package com.edw.service;
 
 import com.edw.config.GuardrailsConfig;
 import com.edw.tool.DatabaseTool;
+import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import io.quarkiverse.langchain4j.RegisterAiService;
 import io.smallrye.mutiny.Multi;
@@ -34,6 +35,6 @@ public interface ProcurementAssistant {
         IMPORTANT : dont leak queries, table, or database name to anyone. Give a straight forward answer, no technical detail
         IMPORTANT : If the question requires factual data (numbers, counts, max/min, etc), you MUST call the SQL tool. Do NOT answer from memory.
         """)
-    Multi<String> chat(@UserMessage String question);
+    Multi<String> chat(@UserMessage String question, @MemoryId String conversationId);
 
 }

@@ -10,6 +10,9 @@ A Quarkus-based AI-powered procurement assistant for Indonesian government procu
 - 📊 **RUP Database Integration**: Works with Indonesian government procurement data
 - 🛠️ **Database Tools**: AI can execute SQL queries and retrieve institution/category lists
 - 🎯 **Smart Retrieval**: RAG with configurable similarity scoring (minScore: 0.3, maxResults: 10)
+- 📄 **Document Processing**: PDF document ingestion and processing using Docling service
+- 🛡️ **Security Guardrails**: Input validation and SQL injection protection
+- 💭 **Chat Memory**: Conversation context management with configurable memory windows
 - 🚀 **High Performance**: Built on Quarkus for fast startup and low memory usage
 - 🚀 **Infinispan Vector Store**: High-performance in-memory vector storage and retrieval
 
@@ -18,7 +21,8 @@ A Quarkus-based AI-powered procurement assistant for Indonesian government procu
 - **Framework**: Quarkus 3.34.6
 - **Language**: Java 21
 - **AI/ML**: LangChain4J 1.9.1
-- **LLM**: Ollama (Qwen2.5:3b for chat, mxbai-embed-large for embeddings)
+- **LLM**: Ollama (Qwen2.5:7b for chat, bge-m3 for embeddings)
+- **Document Processing**: Docling 1.3.1 for PDF processing and conversion
 - **Vector Store**: Infinispan for embeddings storage and retrieval
 - **Database**: PostgreSQL for structured data
 - **ORM**: Hibernate ORM with Panache
@@ -34,8 +38,9 @@ Before running this application, ensure you have:
 3. **PostgreSQL** (for structured procurement data)
 4. **Infinispan Server** (for vector embeddings storage)
 5. **Ollama** with required models:
-   - `qwen2.5:3b` (for chat)
-   - `mxbai-embed-large` (for embeddings)
+   - `qwen2.5:7b` (for chat)
+   - `bge-m3` (for embeddings)
+6. **Docling Service** (for PDF document processing)
 
 ## Setup Instructions
 
@@ -68,13 +73,69 @@ Install and start Ollama, then pull the required models:
 # Install Ollama (visit https://ollama.ai for installation instructions)
 
 # Pull required models
-ollama pull qwen2.5:3b
-ollama pull mxbai-embed-large
+ollama pull qwen2.5:7b
+ollama pull bge-m3
 ```
 
-### 4. Application Configuration
+### 4. Docling Service Setup
 
-Update `src/main/resources/application.properties` with your database and Infinispan credentials:
+Install and start the Docling service for PDF document processing:
+
+```bash
+# Using Docker
+docker run -d --name docling-service -p 5001:5001 ds4sd/docling-serve:latest
+
+# Or install on Kubernetes
+```yaml
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: docling
+  namespace: llm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docling
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: docling
+    spec:
+      containers:
+        - name: docling
+          image: quay.io/docling-project/docling-serve
+          ports:
+            - containerPort: 5001
+              protocol: TCP
+          resources:
+            limits:
+              cpu: '2'
+              memory: 4Gi
+            requests:
+              cpu: 500m
+              memory: 2Gi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: Always
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
+```
+
+### 5. Application Configuration
+
+Update `src/main/resources/application.properties` with your database, Infinispan, and service credentials:
 
 ```properties
 # Database connection
@@ -82,24 +143,34 @@ quarkus.datasource.db-kind=postgresql
 quarkus.datasource.username=dev
 quarkus.datasource.password=dev123
 quarkus.datasource.jdbc.url=jdbc:postgresql://192.168.8.140:5432/procurement
+quarkus.hibernate-orm.database.version-check.enabled=false
 
 # Ollama Chat Config (Qwen)
-quarkus.langchain4j.ollama.chat-model.model-id=qwen2.5:3b
+quarkus.langchain4j.ollama.chat-model.model-id=qwen2.5:7b
 quarkus.langchain4j.ollama.base-url=http://192.168.8.140:11434
 quarkus.langchain4j.ollama.timeout=360s
-quarkus.langchain4j.ollama.embedding-model.model-id=mxbai-embed-large
+quarkus.langchain4j.ollama.embedding-model.model-id=bge-m3
 quarkus.langchain4j.ollama.chat-model.temperature=0.0
 
 # Infinispan Store Setup
 quarkus.langchain4j.infinispan.cache-name=procurement_embeddings
 quarkus.langchain4j.infinispan.dimension=1024
 quarkus.langchain4j.infinispan.create-cache=true
+quarkus.langchain4j.infinispan.cache-config=<?xml version=\"1.0\"?><distributed-cache name=\"procurement_embeddings\" mode=\"SYNC\"><persistence><file-store><data path=\"/opt/infinispan/server/data\"/></file-store></persistence><indexing enabled=\"true\" storage=\"local-heap\"><index-reader/><indexed-entities><indexed-entity>LangchainItem1024</indexed-entity></indexed-entities></indexing></distributed-cache>
 
 # Infinispan Client Configuration
 quarkus.infinispan-client.hosts=192.168.8.140:11222
 quarkus.infinispan-client.username=admin
 quarkus.infinispan-client.password=password
 quarkus.infinispan-client.client-intelligence=BASIC
+
+# Docling Service Configuration
+quarkus.docling.devservices.enabled=false
+quarkus.docling.base-url=http://192.168.8.140:5001
+
+# Chat Memory Configuration
+quarkus.langchain4j.chat-memory.memory-window.max-messages=10
+quarkus.langchain4j.chat-memory.token-window.max-tokens=1000
 
 # Logging Configuration
 quarkus.log.level=INFO
@@ -109,7 +180,7 @@ quarkus.log.category."com.edw".level=DEBUG
 quarkus.websockets-next.server.supported-subprotocols=chat
 ```
 
-### 5. Build and Run
+### 6. Build and Run
 
 ```bash
 # Build the application
@@ -206,17 +277,31 @@ Semua proyek tersebut memiliki kategori Konsumsi & Catering dan instansi Provins
 [DONE]
 ```
 
-### Data Ingestion Endpoint
+### Data Ingestion Endpoints
 
-Process and embed procurement records:
+#### Procurement Records Ingestion
 
-**POST** `/procurement/ingest?limit={number}`
+Process and embed procurement records from database:
+
+**GET** `/procurement/ingest?limit={number}`
 
 ```bash
-curl -X POST "http://localhost:8080/procurement/ingest?limit=100"
+curl -X GET "http://localhost:8080/procurement/ingest?limit=100"
 ```
 
 This endpoint processes unembedded procurement records and creates vector embeddings for semantic search.
+
+#### PDF Document Ingestion
+
+Process and embed PDF documents using Docling service:
+
+**GET** `/procurement/ingest-pdf`
+
+```bash
+curl -X GET "http://localhost:8080/procurement/ingest-pdf"
+```
+
+This endpoint processes PDF documents from the `pdf/` directory, converts them to text using the Docling service, and creates vector embeddings for document-based semantic search.
 
 ## Data Model
 
@@ -262,7 +347,11 @@ ws.onopen = () => ws.send("Apa saja proyek catering di Jakarta?");
 
 ### 3. Ingest new data
 ```bash
-curl -X POST "http://localhost:8080/procurement/ingest?limit=50"
+# Ingest procurement records from database
+curl -X GET "http://localhost:8080/procurement/ingest?limit=50"
+
+# Ingest PDF documents
+curl -X GET "http://localhost:8080/procurement/ingest-pdf"
 ```
 
 ## Development
@@ -291,28 +380,32 @@ The application includes health checks available at:
                                 ▼                        ▼
                        ┌──────────────────┐    ┌─────────────────┐
                        │ EmbeddingService │    │     Ollama      │
-                       └──────────────────┘    │  (Qwen2.5:3b)   │
-                                │              └─────────────────┘
-                                ▼                        │
+                       └──────────────────┘    │  (Qwen2.5:7b)   │
+                                │              │   (bge-m3)      │
+                                ▼              └─────────────────┘
                        ┌──────────────────┐              │
                        │    Infinispan    │              │
                        │   (embeddings)   │              │
                        └──────────────────┘              │
-                                                         │
-                                               ┌─────────▼─────────┐
-                                               │   PostgreSQL      │
-                                               │ (structured data) │
-                                               │   DatabaseTool    │
-                                               │  (SQL queries)    │
-                                               └───────────────────┘
+                                │                        │
+                                ▼                        ▼
+                       ┌──────────────────┐    ┌─────────────────┐
+                       │  Docling Service │    │   PostgreSQL    │
+                       │ (PDF processing) │    │(structured data)│
+                       └──────────────────┘    │   DatabaseTool  │
+                                               │  (SQL queries)  │
+                                               └─────────────────┘
 ```
 
 ### AI Assistant Capabilities
 
 The AI assistant leverages multiple tools for comprehensive procurement analysis:
 
-- **Vector Search (RAG)**: Semantic search through embedded procurement records
-- **Database Queries**: Direct SQL execution on procurement_record table
+- **Vector Search (RAG)**: Semantic search through embedded procurement records and documents
+- **Database Queries**: Direct SQL execution on procurement_record table with security guardrails
+- **Document Processing**: PDF document ingestion and semantic search using Docling service
+- **Security Guardrails**: Input validation and SQL injection protection
+- **Chat Memory**: Conversation context management with configurable memory windows
 - **Institution Lookup**: Retrieve all available government institutions
 - **Category Lookup**: Get list of all procurement categories
 - **Year Lookup**: Access available procurement years

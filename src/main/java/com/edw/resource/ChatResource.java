@@ -1,6 +1,7 @@
 package com.edw.resource;
 
 import com.edw.service.ProcurementAssistant;
+import com.edw.service.ProcurementAssistantHeavy;
 import io.quarkus.websockets.next.*;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
@@ -20,6 +21,9 @@ public class ChatResource {
 
     @Inject
     ProcurementAssistant assistant;
+
+    @Inject
+    ProcurementAssistantHeavy heavyAssistant;
 
     @Inject
     WebSocketConnection webSocketConnection;
@@ -44,14 +48,21 @@ public class ChatResource {
 
         String memoryId = webSocketConnection.id();
 
+        Multi<String> response = needsHeavyModel(question.toLowerCase())
+                ? heavyAssistant.chat(question, memoryId)
+                    : assistant.chat(question, memoryId);
+
         return Multi.createBy().concatenating().streams(
-                assistant.chat(question, memoryId)
-                    .onItem().transform(token -> token),
-                Multi.createFrom().item("[DONE]")
+                    response.onItem().transform(token -> token),
+                        Multi.createFrom().item("[DONE]")
         )
-                .onFailure().recoverWithItem(err -> {
-                    logger.error("Error occurred while processing question: {}", question, err);
-                    return "[ERROR] Something went wrong: please contact support.";
-                });
+            .onFailure().recoverWithItem(err -> {
+                logger.error("Error occurred while processing question: {}", question, err);
+                return "[ERROR] Something went wrong: please contact support.";
+            });
+    }
+
+    private boolean needsHeavyModel(String q) {
+        return q.matches(".*(analisa|analisis|evaluasi).*");
     }
 }

@@ -17,7 +17,8 @@ import dev.langchain4j.service.UserMessage;
  * @author Muhammad Edwin < edwin at redhat dot com >
  * 28 Apr 2026 15:43
  */
-@RegisterAiService(tools = DatabaseTool.class)
+@RegisterAiService(tools = DatabaseTool.class,
+                        modelName = "qwen7b")
 @InputGuardrails(GuardrailsConfig.class)
 public interface ProcurementAssistant {
 
@@ -39,7 +40,7 @@ public interface ProcurementAssistant {
             - Never mix: if you called the tool, answer only from the tool result.
         
             Rules:
-            - Always format numbers with thousand separators (e.g. Rp 1.500.000)
+            - Always format numbers with thousand separators and locale ID (e.g. Rp 1.500.000.000)
             - If no year is mentioned, use the current year (e.g. 2026)
             - If data is not found, say you don't know
             - Never answer question that doesnt correlates with procurements

@@ -28,6 +28,8 @@ public class InfinispanChatMemoryStore implements ChatMemoryStore {
     @Inject
     RemoteCacheManager cacheManager;
 
+    private RemoteCache remoteCache;
+
     private RemoteCache<String, String> getCache() {
         String xmlConfig = """
         <infinispan>
@@ -43,7 +45,11 @@ public class InfinispanChatMemoryStore implements ChatMemoryStore {
         </infinispan>
         """;
 
-        return cacheManager.administration().getOrCreateCache("chat-memory", new StringConfiguration(xmlConfig));
+        if(remoteCache == null) {
+            remoteCache = cacheManager.administration().getOrCreateCache("chat-memory", new StringConfiguration(xmlConfig));
+        }
+
+        return remoteCache;
     }
 
     @Override

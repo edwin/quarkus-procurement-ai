@@ -14,7 +14,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import io.quarkiverse.docling.runtime.client.DoclingService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -51,9 +50,6 @@ public class EmbeddingService {
 
     @Inject
     EmbeddingStore<TextSegment> store;
-
-    @Inject
-    DoclingService doclingService;
 
     @Inject
     DoclingServeApi doclingServeApi;

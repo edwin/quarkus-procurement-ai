@@ -8,6 +8,7 @@ A Quarkus-based AI-powered procurement assistant for Indonesian government procu
   - **Standard Model** (Qwen2.5:7b): For general procurement queries and data retrieval
   - **Heavy Model** (Qwen2.5:14b): For complex analytical tasks and in-depth analysis
 - 🧠 **Intelligent Model Routing**: Automatically selects the appropriate model based on query complexity (keywords: analisa, analisis, evaluasi)
+- ⚡ **Semantic Caching**: Advanced semantic caching system using vector embeddings with 90% similarity threshold for instant responses to similar queries
 - 🔍 **Vector Search**: Semantic search through procurement records using BGE-M3 embeddings
 - 🇮🇩 **Indonesian Language Support**: Full Bahasa Indonesia interface and responses
 - 📊 **RUP Database Integration**: Direct integration with Indonesian government procurement database
@@ -23,6 +24,29 @@ A Quarkus-based AI-powered procurement assistant for Indonesian government procu
 - 🚀 **High Performance**: Built on Quarkus for fast startup and low memory usage
 - 🗄️ **Infinispan Vector Store**: High-performance in-memory vector storage with persistence
 - 📊 **Indonesian Number Formatting**: Automatic formatting with thousand separators (e.g., Rp 1.500.000.000)
+
+## Semantic Caching System
+
+The application features an advanced semantic caching system that significantly improves response times for similar queries:
+
+### How It Works
+- **Vector-Based Similarity**: Uses BGE-M3 embeddings to find semantically similar questions
+- **High Similarity Threshold**: 90% similarity threshold ensures accurate cache hits
+- **Automatic Expiration**: Cached responses expire after 1 hour (lifespan) with 30 minutes max idle time
+- **Memory Management**: Limited to 500 cached items with automatic removal when full
+- **Intelligent Caching**: Only caches successful responses (excludes errors and incomplete responses)
+
+### Benefits
+- **Instant Responses**: Cache hits return immediately without AI model processing
+- **Reduced Load**: Decreases load on AI models and database queries
+- **Consistent Answers**: Ensures consistent responses for similar questions
+- **Smart Storage**: Uses semantic similarity rather than exact text matching
+
+### Cache Behavior
+- Questions like "Apa saja proyek catering di Jakarta?" and "Tampilkan proyek catering Jakarta" will likely hit the same cache entry
+- Cache misses automatically store the response for future similar queries
+- Failed queries and error responses are not cached
+- Cache operates transparently - users don't need to know about its existence
 
 ## Technologies Used
 
@@ -160,12 +184,22 @@ quarkus.datasource.password=dev123
 quarkus.datasource.jdbc.url=jdbc:postgresql://192.168.8.140:5432/procurement
 quarkus.hibernate-orm.database.version-check.enabled=false
 
-# Ollama Chat Config (Qwen)
-quarkus.langchain4j.ollama.chat-model.model-id=qwen2.5:7b
+# Ollama Embedding Config
 quarkus.langchain4j.ollama.base-url=http://192.168.8.140:11434
 quarkus.langchain4j.ollama.timeout=360s
 quarkus.langchain4j.ollama.embedding-model.model-id=bge-m3
-quarkus.langchain4j.ollama.chat-model.temperature=0.0
+
+# Qwen 7B (Standard Model)
+quarkus.langchain4j.ollama.qwen7b.base-url=http://192.168.8.140:11434
+quarkus.langchain4j.ollama.qwen7b.chat-model.model-id=qwen2.5:7b
+quarkus.langchain4j.ollama.qwen7b.chat-model.temperature=0.0
+quarkus.langchain4j.ollama.qwen7b.timeout=120s
+
+# Qwen 14B (Heavy Model for Analysis)
+quarkus.langchain4j.ollama.qwen14b.base-url=http://192.168.8.140:11434
+quarkus.langchain4j.ollama.qwen14b.chat-model.model-id=qwen2.5:14b-instruct
+quarkus.langchain4j.ollama.qwen14b.chat-model.temperature=0.0
+quarkus.langchain4j.ollama.qwen14b.timeout=120s
 
 # Infinispan Store Setup
 quarkus.langchain4j.infinispan.cache-name=procurement_embeddings
@@ -185,7 +219,6 @@ quarkus.docling.base-url=http://192.168.8.140:5001
 
 # Chat Memory Configuration
 quarkus.langchain4j.chat-memory.memory-window.max-messages=10
-quarkus.langchain4j.chat-memory.token-window.max-tokens=1000
 
 # Logging Configuration
 quarkus.log.level=INFO
@@ -391,33 +424,34 @@ The application includes health checks available at:
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐
-│  WebSocket      │───▶│  ChatResource    │───▶│ Intelligent Routing │
-│   Client        │    │   (WebSocket)    │    │  (keyword-based)    │
+│  WebSocket      │───▶│  ChatResource    │───▶│ Semantic Cache      │
+│   Client        │    │   (WebSocket)    │    │ (90% similarity)    │
 └─────────────────┘    └──────────────────┘    └─────────────────────┘
                                 │                         │
+                                │                    Cache Miss
                                 ▼                         ▼
                        ┌──────────────────┐    ┌─────────────────────┐
-                       │ EmbeddingService │    │      Dual Models    │
-                       └──────────────────┘    │                     │
-                                │              │ ┌─────────────────┐ │
-                                ▼              │ │ Standard Model  │ │
-                       ┌──────────────────┐    │ │ Qwen2.5:7b      │ │
-                       │    Infinispan    │    │ │ (general query) │ │
-                       │   (embeddings)   │    │ └─────────────────┘ │
-                       └──────────────────┘    │ ┌─────────────────┐ │
-                                │              │ │  Heavy Model    │ │
-                                ▼              │ │ Qwen2.5:14b     │ │
-                       ┌──────────────────┐    │ │ (analysis)      │ │
-                       │  Docling Service │    │ └─────────────────┘ │
-                       │ (PDF processing) │    │ ┌─────────────────┐ │
-                       └──────────────────┘    │ │ Embedding Model │ │
-                                               │ │    BGE-M3       │ │
-                                               │ └─────────────────┘ │
-                                               └─────────────────────┘
-                                                         │
-                                                         ▼
-                                               ┌─────────────────────┐
-                                               │    PostgreSQL       │
+                       │ Intelligent      │    │      Dual Models    │
+                       │ Model Routing    │    │                     │
+                       │ (keyword-based)  │    │ ┌─────────────────┐ │
+                       └──────────────────┘    │ │ Standard Model  │ │
+                                │              │ │ Qwen2.5:7b      │ │
+                                ▼              │ │ (general query) │ │
+                       ┌──────────────────┐    │ └─────────────────┘ │
+                       │ EmbeddingService │    │ ┌─────────────────┐ │
+                       └──────────────────┘    │ │  Heavy Model    │ │
+                                │              │ │ Qwen2.5:14b     │ │
+                                ▼              │ │ (analysis)      │ │
+                       ┌──────────────────┐    │ └─────────────────┘ │
+                       │    Infinispan    │    │ ┌─────────────────┐ │
+                       │   (embeddings)   │    │ │ Embedding Model │ │
+                       └──────────────────┘    │ │    BGE-M3       │ │
+                                │              │ └─────────────────┘ │
+                                ▼              └─────────────────────┘
+                       ┌──────────────────┐              │
+                       │  Docling Service │              ▼
+                       │ (PDF processing) │    ┌─────────────────────┐
+                       └──────────────────┘    │    PostgreSQL       │
                                                │ (structured data)   │
                                                │    DatabaseTool     │
                                                │  (secure queries)   │
@@ -426,17 +460,22 @@ The application includes health checks available at:
 
 ### AI Assistant Capabilities
 
-The AI assistant leverages multiple tools for comprehensive procurement analysis:
+The AI assistant features a sophisticated dual-model architecture with intelligent routing:
 
-- **Vector Search (RAG)**: Semantic search through embedded procurement records and documents
-- **Database Queries**: Direct SQL execution on procurement_record table with security guardrails
+#### Dual Model Architecture
+- **Standard Model (Qwen2.5:7b)**: Handles general procurement queries, data retrieval, and basic questions
+- **Heavy Model (Qwen2.5:14b-instruct)**: Processes complex analytical tasks, in-depth analysis, and evaluation requests
+- **Intelligent Routing**: Automatically selects the appropriate model based on keywords (analisa, analisis, evaluasi)
+
+#### Core Capabilities
+- **Semantic Caching**: Advanced vector-based caching system with 90% similarity threshold for instant responses to similar queries
+- **Vector Search (RAG)**: Semantic search through embedded procurement records and documents using BGE-M3 embeddings
+- **Secure Database Queries**: Direct SQL execution on procurement_record table with comprehensive security guardrails
 - **Document Processing**: PDF document ingestion and semantic search using Docling service
-- **Security Guardrails**: Input validation and SQL injection protection
-- **Chat Memory**: Conversation context management with configurable memory windows
-- **Institution Lookup**: Retrieve all available government institutions
-- **Category Lookup**: Get list of all procurement categories
-- **Year Lookup**: Access available procurement years
-- **Smart Filtering**: Automatic filtering for embedded records only
+- **Advanced Security**: Multi-layer protection including SQL injection prevention and input validation
+- **Chat Memory**: Conversation context management with 10-message memory window
+- **Smart Data Access**: Automatic filtering for embedded records and secure query constraints
+- **Indonesian Formatting**: Automatic number formatting with thousand separators for currency display
 
 ## Table Structure
 ```sql

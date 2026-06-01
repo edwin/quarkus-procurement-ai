@@ -4,29 +4,42 @@ A Quarkus-based AI-powered procurement assistant for Indonesian government procu
 
 ## Features
 
-- 🤖 **AI-Powered Chat**: Ask questions about procurement data in natural language
-- 🔍 **Vector Search**: Semantic search through procurement records using embeddings
-- 🇮🇩 **Indonesian Language Support**: Responds in Bahasa Indonesia
-- 📊 **RUP Database Integration**: Works with Indonesian government procurement data
-- 🛠️ **Database Tools**: AI can execute SQL queries and retrieve institution/category lists
-- 🎯 **Smart Retrieval**: RAG with configurable similarity scoring (minScore: 0.3, maxResults: 10)
+- 🤖 **Dual AI Model Architecture**: 
+  - **Standard Model** (Qwen2.5:7b): For general procurement queries and data retrieval
+  - **Heavy Model** (Qwen2.5:14b): For complex analytical tasks and in-depth analysis
+- 🧠 **Intelligent Model Routing**: Automatically selects the appropriate model based on query complexity (keywords: analisa, analisis, evaluasi)
+- 🔍 **Vector Search**: Semantic search through procurement records using BGE-M3 embeddings
+- 🇮🇩 **Indonesian Language Support**: Full Bahasa Indonesia interface and responses
+- 📊 **RUP Database Integration**: Direct integration with Indonesian government procurement database
+- 🛠️ **Secure Database Tools**: AI can execute SELECT-only SQL queries with built-in security constraints
+- 🎯 **Smart Retrieval**: RAG with configurable similarity scoring and result limits
 - 📄 **Document Processing**: PDF document ingestion and processing using Docling service
-- 🛡️ **Security Guardrails**: Input validation and SQL injection protection
-- 💭 **Chat Memory**: Conversation context management with configurable memory windows
+- 🛡️ **Advanced Security Guardrails**: 
+  - SQL injection protection with pattern matching
+  - Input validation and sanitization
+  - Query restriction to procurement_record table only
+- 💭 **Chat Memory**: Conversation context management with 10-message memory window
+- 🌐 **Real-time WebSocket Chat**: Live streaming responses via WebSocket connection
 - 🚀 **High Performance**: Built on Quarkus for fast startup and low memory usage
-- 🚀 **Infinispan Vector Store**: High-performance in-memory vector storage and retrieval
+- 🗄️ **Infinispan Vector Store**: High-performance in-memory vector storage with persistence
+- 📊 **Indonesian Number Formatting**: Automatic formatting with thousand separators (e.g., Rp 1.500.000.000)
 
 ## Technologies Used
 
 - **Framework**: Quarkus 3.34.6
 - **Language**: Java 21
 - **AI/ML**: LangChain4J 1.9.1
-- **LLM**: Ollama (Qwen2.5:7b for chat, bge-m3 for embeddings)
+- **LLM Models**: 
+  - **Qwen2.5:7b** (Standard model for general queries)
+  - **Qwen2.5:14b-instruct** (Heavy model for complex analysis)
+  - **BGE-M3** (Embedding model for vector search)
 - **Document Processing**: Docling 1.3.1 for PDF processing and conversion
-- **Vector Store**: Infinispan for embeddings storage and retrieval
-- **Database**: PostgreSQL for structured data
+- **Vector Store**: Infinispan for embeddings storage and retrieval with persistence
+- **Database**: PostgreSQL for structured procurement data
 - **ORM**: Hibernate ORM with Panache
-- **API**: JAX-RS with Jackson, WebSocket for real-time chat
+- **API**: JAX-RS with Jackson
+- **Real-time Communication**: WebSocket with Quarkus WebSockets Next
+- **Template Engine**: Qute for web interface
 - **Build Tool**: Maven
 
 ## Prerequisites
@@ -38,7 +51,8 @@ Before running this application, ensure you have:
 3. **PostgreSQL** (for structured procurement data)
 4. **Infinispan Server** (for vector embeddings storage)
 5. **Ollama** with required models:
-   - `qwen2.5:7b` (for chat)
+   - `qwen2.5:7b` (standard model for general queries)
+   - `qwen2.5:14b-instruct` (heavy model for complex analysis)
    - `bge-m3` (for embeddings)
 6. **Docling Service** (for PDF document processing)
 
@@ -74,6 +88,7 @@ Install and start Ollama, then pull the required models:
 
 # Pull required models
 ollama pull qwen2.5:7b
+ollama pull qwen2.5:14b-instruct
 ollama pull bge-m3
 ```
 
@@ -375,29 +390,38 @@ The application includes health checks available at:
 ## Architecture
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  WebSocket      │───▶│  ChatResource    │───▶│ ProcurementAI   │
-│   Client        │    │   (WebSocket)    │    │   Assistant     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │                        │
-                                ▼                        ▼
-                       ┌──────────────────┐    ┌─────────────────┐
-                       │ EmbeddingService │    │     Ollama      │
-                       └──────────────────┘    │  (Qwen2.5:7b)   │
-                                │              │   (bge-m3)      │
-                                ▼              └─────────────────┘
-                       ┌──────────────────┐              │
-                       │    Infinispan    │              │
-                       │   (embeddings)   │              │
-                       └──────────────────┘              │
-                                │                        │
-                                ▼                        ▼
-                       ┌──────────────────┐    ┌─────────────────┐
-                       │  Docling Service │    │   PostgreSQL    │
-                       │ (PDF processing) │    │(structured data)│
-                       └──────────────────┘    │   DatabaseTool  │
-                                               │  (SQL queries)  │
-                                               └─────────────────┘
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐
+│  WebSocket      │───▶│  ChatResource    │───▶│ Intelligent Routing │
+│   Client        │    │   (WebSocket)    │    │  (keyword-based)    │
+└─────────────────┘    └──────────────────┘    └─────────────────────┘
+                                │                         │
+                                ▼                         ▼
+                       ┌──────────────────┐    ┌─────────────────────┐
+                       │ EmbeddingService │    │      Dual Models    │
+                       └──────────────────┘    │                     │
+                                │              │ ┌─────────────────┐ │
+                                ▼              │ │ Standard Model  │ │
+                       ┌──────────────────┐    │ │ Qwen2.5:7b      │ │
+                       │    Infinispan    │    │ │ (general query) │ │
+                       │   (embeddings)   │    │ └─────────────────┘ │
+                       └──────────────────┘    │ ┌─────────────────┐ │
+                                │              │ │  Heavy Model    │ │
+                                ▼              │ │ Qwen2.5:14b     │ │
+                       ┌──────────────────┐    │ │ (analysis)      │ │
+                       │  Docling Service │    │ └─────────────────┘ │
+                       │ (PDF processing) │    │ ┌─────────────────┐ │
+                       └──────────────────┘    │ │ Embedding Model │ │
+                                               │ │    BGE-M3       │ │
+                                               │ └─────────────────┘ │
+                                               └─────────────────────┘
+                                                         │
+                                                         ▼
+                                               ┌─────────────────────┐
+                                               │    PostgreSQL       │
+                                               │ (structured data)   │
+                                               │    DatabaseTool     │
+                                               │  (secure queries)   │
+                                               └─────────────────────┘
 ```
 
 ### AI Assistant Capabilities

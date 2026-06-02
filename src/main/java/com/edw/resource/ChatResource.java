@@ -5,9 +5,12 @@ import com.edw.service.ProcurementAssistant;
 import com.edw.service.ProcurementAssistantHeavy;
 import io.quarkus.websockets.next.*;
 import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
 
 @WebSocket(path = "/procurement/chat")
 public class ChatResource {
@@ -59,7 +62,7 @@ public class ChatResource {
                     if (cachedResponse != null) {
                         logger.debug("Cache HIT for: {}", question);
                         return Multi.createBy().concatenating().streams(
-                                Multi.createFrom().item(cachedResponse),
+                                streamCachedResponse(cachedResponse),
                                 Multi.createFrom().item("[DONE]")
                         );
                     }
@@ -89,5 +92,23 @@ public class ChatResource {
 
     private boolean needsHeavyModel(String q) {
         return q.matches(".*(analisa|analisis|evaluasi).*");
+    }
+
+    /**
+     * Streams a cached response by splitting the given response into words, appending a space to each word,
+     * and delaying the emission of each word by 40 milliseconds.
+     *
+     * @param response the cached response string to be streamed, which is split into individual words
+     * @return a Multi emitting the words of the response one-by-one, each with a 40-millisecond delay
+     */
+    private Multi<String> streamCachedResponse(String response) {
+        String[] words = response.split("\\s+");
+
+        return Multi.createFrom().items(words)
+                .onItem().transform(word -> word + " ")
+                .onItem().call(word ->
+                        Uni.createFrom().voidItem()
+                                .onItem().delayIt().by(Duration.ofMillis(40))
+                );
     }
 }

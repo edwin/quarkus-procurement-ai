@@ -16,6 +16,25 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/**
+ *
+ * The InfinispanChatMemoryStore is an implementation of the ChatMemoryStore interface, responsible
+ * for managing chat messages in memory with the use of an Infinispan distributed cache. This
+ * implementation ensures messages can be stored, retrieved, updated, or deleted while honoring
+ * expiration and memory management configurations.
+ *
+ * It uses an Infinispan cache named "chat-memory", configured with parameters for data encoding,
+ * expiration, and memory constraints. Initialization of the cache is handled automatically during
+ * application startup.
+ *
+ * The class provides the following key functionalities:
+ *
+ * - Retrieving messages associated with a specified memory identifier.
+ * - Updating stored messages for a specified memory identifier.
+ * - Deleting messages for a specified memory identifier.
+ *
+ * Logging is included to track the initialization process and other important events.
+ */
 @ApplicationScoped
 public class InfinispanChatMemoryStore implements ChatMemoryStore {
 
